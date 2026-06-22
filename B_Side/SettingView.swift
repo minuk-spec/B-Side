@@ -14,6 +14,7 @@ struct SettingView: View {
     @State private var autoInterval: Int
     @State private var feedbackMessage: String? = nil
     @State private var showPOSManager = false
+    @State private var updateState: Updater.State = .idle
     let intervalOptions = [5, 15, 30]
 
     init(store: WordStore, onBack: @escaping () -> Void, onClose: @escaping () -> Void, onShowTutorial: (() -> Void)? = nil) {
@@ -98,6 +99,22 @@ struct SettingView: View {
                             }
                         }
                         Divider()
+                        // 업데이트
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("업데이트").font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("현재 버전 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")")
+                                        .font(.system(size: 12)).foregroundColor(.secondary)
+                                    updateStatusText
+                                }
+                                Spacer()
+                                updateActionButton
+                            }
+                            .padding(.horizontal, 12).padding(.vertical, 9)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
+                        }
+                        Divider()
                         // 튜토리얼
                         VStack(alignment: .leading, spacing: 10) {
                             Text("도움말").font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
@@ -126,6 +143,42 @@ struct SettingView: View {
                 }.padding(.horizontal, 16).padding(.vertical, 10)
             }
         }.frame(width: 300)
+    }
+
+    @ViewBuilder var updateStatusText: some View {
+        switch updateState {
+        case .idle:                  EmptyView()
+        case .checking:              Text("확인 중...").font(.system(size: 11)).foregroundColor(.secondary)
+        case .available(let v, _):   Text("v\(v) 업데이트 가능").font(.system(size: 11)).foregroundColor(.blue)
+        case .downloading:           Text("다운로드 중...").font(.system(size: 11)).foregroundColor(.secondary)
+        case .installing:            Text("설치 중... 앱이 재시작됩니다").font(.system(size: 11)).foregroundColor(.secondary)
+        case .upToDate:              Text("최신 버전입니다").font(.system(size: 11)).foregroundColor(.green)
+        case .error(let msg):        Text(msg).font(.system(size: 11)).foregroundColor(.red)
+        }
+    }
+
+    @ViewBuilder var updateActionButton: some View {
+        switch updateState {
+        case .available(_, let assetID):
+            Button("업데이트") {
+                Updater.shared.downloadAndInstall(assetID: assetID)
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue))
+        case .checking, .downloading, .installing:
+            ProgressView().scaleEffect(0.7)
+        default:
+            Button("확인") {
+                Updater.shared.onStateChange = { state in updateState = state }
+                Updater.shared.checkForUpdate()
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 12))
+            .foregroundColor(.blue)
+        }
     }
 
     func exportData() {
