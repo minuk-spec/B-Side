@@ -4,6 +4,7 @@ struct TapView: View {
     let word: Word
     var isReverse: Bool = false
     var onToggleMemorized: (() -> Void)? = nil
+    var onToggleFocused: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -29,18 +30,31 @@ struct TapView: View {
                     .foregroundColor(.secondary.opacity(0.8))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if onToggleMemorized != nil {
+            if onToggleFocused != nil || onToggleMemorized != nil {
                 Divider()
-                Button(action: { onToggleMemorized?() }) {
-                    HStack(spacing: 5) {
-                        Image(systemName: word.isMemorized ? "checkmark.circle.fill" : "checkmark.circle")
-                            .font(.system(size: 12))
-                        Text(word.isMemorized ? "외웠음 취소" : "외웠어요")
-                            .font(.system(size: 12))
+                HStack(spacing: 16) {
+                    if onToggleFocused != nil {
+                        Button(action: { onToggleFocused?() }) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "scope").font(.system(size: 12))
+                                Text(word.isFocused ? "집중 해제" : "집중 단어")
+                                    .font(.system(size: 12))
+                            }
+                            .foregroundColor(word.isFocused ? Color(red: 1.0, green: 0.6, blue: 0.1) : .secondary)
+                        }.buttonStyle(.plain)
                     }
-                    .foregroundColor(word.isMemorized ? .green : .secondary)
+                    if onToggleMemorized != nil {
+                        Button(action: { onToggleMemorized?() }) {
+                            HStack(spacing: 5) {
+                                Image(systemName: word.isMemorized ? "checkmark.circle.fill" : "checkmark.circle")
+                                    .font(.system(size: 12))
+                                Text(word.isMemorized ? "외웠음 취소" : "외웠어요")
+                                    .font(.system(size: 12))
+                            }
+                            .foregroundColor(word.isMemorized ? .green : .secondary)
+                        }.buttonStyle(.plain)
+                    }
                 }
-                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16).padding(.vertical, 14)

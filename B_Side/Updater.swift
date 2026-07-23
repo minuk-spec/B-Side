@@ -8,12 +8,11 @@ class Updater {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
 
     private let apiBase = "https://api.github.com/repos/minuk-spec/B-Side"
-    private let token   = "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"
 
     enum State: Equatable {
         case idle
         case checking
-        case available(version: String, assetID: Int)
+        case available(version: String, downloadURL: String)
         case downloading
         case installing
         case upToDate
@@ -29,12 +28,18 @@ class Updater {
         guard state != .checking else { return }
         state = .checking
 
-        var req = URLRequest(url: URL(string: "\(apiBase)/releases/latest")!)
-        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        let req = URLRequest(url: URL(string: "\(apiBase)/releases/latest")!)
 
-        URLSession.shared.dataTask(with: req) { [weak self] data, _, _ in
+        URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
             guard let self else { return }
+            if let error = error {
+                self.state = .error("네트워크 오류: \(error.localizedDescription)")
+                return
+            }
+            if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                self.state = .error("서버 오류 (\(http.statusCode))")
+                return
+            }
             guard let data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let tag  = json["tag_name"] as? String else {
@@ -46,75 +51,101 @@ class Updater {
                 self.state = .upToDate
                 return
             }
-            guard let assets  = json["assets"] as? [[String: Any]],
-                  let asset   = assets.first,
-                  let assetID = asset["id"] as? Int else {
+            guard let assets      = json["assets"] as? [[String: Any]],
+                  let asset       = assets.first,
+                  let downloadURL = asset["browser_download_url"] as? String else {
                 self.state = .error("다운로드 파일 없음")
                 return
             }
-            self.state = .available(version: latest, assetID: assetID)
+            self.state = .available(version: latest, downloadURL: downloadURL)
         }.resume()
     }
 
-    func downloadAndInstall(assetID: Int) {
+    func downloadAndInstall(downloadURL: String) {
         state = .downloading
 
-        var req = URLRequest(url: URL(string: "\(apiBase)/releases/assets/\(assetID)")!)
-        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        req.setValue("application/octet-stream", forHTTPHeaderField: "Accept")
+        guard let url = URL(string: downloadURL) else {
+            state = .error("잘못된 URL"); return
+        }
 
-        URLSession.shared.downloadTask(with: req) { [weak self] tempURL, _, _ in
+        URLSession.shared.downloadTask(with: URLRequest(url: url)) { [weak self] tempURL, _, _ in
             guard let self else { return }
             guard let tempURL else { self.state = .error("다운로드 실패"); return }
+
+            // 임시 파일을 안정적인 경로로 이동 (launchd 스크립트가 앱 종료 후 접근하므로)
+            let stableDMG = URL(fileURLWithPath: NSTemporaryDirectory() + "B-Side-pending.dmg")
+            try? FileManager.default.removeItem(at: stableDMG)
+            guard (try? FileManager.default.moveItem(at: tempURL, to: stableDMG)) != nil else {
+                self.state = .error("다운로드 실패"); return
+            }
+
             self.state = .installing
-            self.install(from: tempURL)
+            self.install(from: stableDMG)
         }.resume()
     }
 
-    private func install(from zipURL: URL) {
-        let fm      = FileManager.default
-        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("BSideUpdate_\(UUID().uuidString)")
+    private func install(from dmgURL: URL) {
+        let fm = FileManager.default
 
-        do {
-            try fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-            let unzip = Process()
-            unzip.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-            unzip.arguments     = ["-q", zipURL.path, "-d", tempDir.path]
-            try unzip.run(); unzip.waitUntilExit()
-
-            let newApp = tempDir.appendingPathComponent("B_Side.app")
-            guard fm.fileExists(atPath: newApp.path) else {
-                state = .error("앱 파일 없음"); return
-            }
-
-            let currentPath = Bundle.main.bundleURL.path
-            let parentDir   = (currentPath as NSString).deletingLastPathComponent
-            let targetPath  = (parentDir as NSString).appendingPathComponent("B_Side.app")
-
-            let scriptPath = tempDir.appendingPathComponent("update.sh").path
-            let script = """
-            #!/bin/bash
-            sleep 1
-            rm -rf "\(targetPath)"
-            cp -R "\(newApp.path)" "\(targetPath)"
-            xattr -cr "\(targetPath)"
-            open "\(targetPath)"
-            rm -rf "\(tempDir.path)"
-            """
-            try script.write(toFile: scriptPath, atomically: true, encoding: .utf8)
-            try fm.setAttributes([.posixPermissions: NSNumber(value: 0o755)], ofItemAtPath: scriptPath)
-
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/bin/bash")
-            proc.arguments     = [scriptPath]
-            try proc.run()
-
-            DispatchQueue.main.async { NSApp.terminate(nil) }
-        } catch {
-            state = .error("설치 실패")
+        let testFile = "/Applications/.bside_write_test"
+        let canWrite = fm.createFile(atPath: testFile, contents: Data(), attributes: nil)
+        if canWrite { try? fm.removeItem(atPath: testFile) }
+        guard canWrite else {
+            state = .error("설치 실패:\n/Applications 쓰기 권한 없음")
+            return
         }
+
+        let targetPath = "/Applications/B_Side.app"
+        let mountPoint = NSTemporaryDirectory() + "bside_mount_\(Int.random(in: 100000...999999))"
+
+        // 1. 마운트
+        let mount = Process()
+        mount.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
+        mount.arguments = ["attach", dmgURL.path, "-mountpoint", mountPoint,
+                           "-nobrowse", "-noverify", "-quiet"]
+        guard (try? mount.run()) != nil else { state = .error("마운트 실패"); return }
+        mount.waitUntilExit()
+        guard mount.terminationStatus == 0 else { state = .error("마운트 실패"); return }
+
+        // 2. 구버전 제거 → 신버전 복사 → quarantine 해제
+        let update = Process()
+        update.executableURL = URL(fileURLWithPath: "/bin/bash")
+        update.arguments = ["-c", """
+            rm -rf '\(targetPath)' && \
+            /usr/bin/ditto '\(mountPoint)/B_Side.app' '\(targetPath)' && \
+            xattr -cr '\(targetPath)'
+        """]
+        guard (try? update.run()) != nil else {
+            cleanup(mountPoint: mountPoint, dmg: dmgURL)
+            state = .error("설치 실패")
+            return
+        }
+        update.waitUntilExit()
+
+        cleanup(mountPoint: mountPoint, dmg: dmgURL)
+
+        guard update.terminationStatus == 0 else {
+            state = .error("설치 실패")
+            return
+        }
+
+        // 3. 새 앱 실행 → 현재 앱 종료
+        DispatchQueue.main.async {
+            NSWorkspace.shared.open(URL(fileURLWithPath: targetPath))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NSApp.terminate(nil)
+            }
+        }
+    }
+
+    private func cleanup(mountPoint: String, dmg: URL) {
+        let detach = Process()
+        detach.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
+        detach.arguments = ["detach", mountPoint, "-quiet"]
+        try? detach.run()
+        detach.waitUntilExit()
+        try? FileManager.default.removeItem(atPath: mountPoint)
+        try? FileManager.default.removeItem(at: dmg)
     }
 
     private func isNewer(_ v1: String, than v2: String) -> Bool {

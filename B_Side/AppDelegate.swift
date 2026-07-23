@@ -98,6 +98,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let hoverText   = store.isReverse ? word?.term : word?.meaning
         statusBarView?.setWord(displayText, isFocused: word?.isFocused ?? false)
         statusBarView?.setHoverText(hoverText)
+        store.recordCurrentWordView()
     }
 
     func startAutoTimer() {
@@ -124,10 +125,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     func showTapPopover() {
         statusBarView?.setHoverText(nil)
         guard let word = store.currentWord, let button = statusItem?.button else { return }
-        let hostingVC = NSHostingController(rootView: TapView(word: word, isReverse: store.isReverse, onToggleMemorized: { [weak self] in
-            self?.store.toggleMemorized(id: word.id)
-            self?.closePopover()
-        }))
+        let hostingVC = NSHostingController(rootView: TapView(
+            word: word,
+            isReverse: store.isReverse,
+            onToggleMemorized: { [weak self] in
+                self?.store.toggleMemorized(id: word.id)
+                self?.closePopover()
+            },
+            onToggleFocused: { [weak self] in
+                self?.store.toggleFocused(id: word.id)
+                self?.closePopover()
+            }
+        ))
         hostingVC.sizingOptions = .preferredContentSize
         let p = NSPopover()
         p.contentViewController = hostingVC

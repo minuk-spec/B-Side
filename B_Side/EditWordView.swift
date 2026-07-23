@@ -11,16 +11,18 @@ struct EditWordView: View {
     @State private var example: String
     @State private var exampleMeaning: String
     @State private var selectedPOSID: UUID?
+    @State private var selectedFolderIDs: Set<UUID>
     @FocusState private var focused: Field?
     enum Field { case term, meaning, example, exampleMeaning }
 
     init(store: WordStore, word: Word, onBack: @escaping () -> Void, onClose: @escaping () -> Void) {
         self.store = store; self.word = word; self.onBack = onBack; self.onClose = onClose
-        _term           = State(initialValue: word.term)
-        _meaning        = State(initialValue: word.meaning)
-        _example        = State(initialValue: word.example)
-        _exampleMeaning = State(initialValue: word.exampleMeaning)
-        _selectedPOSID  = State(initialValue: word.posTagID)
+        _term              = State(initialValue: word.term)
+        _meaning           = State(initialValue: word.meaning)
+        _example           = State(initialValue: word.example)
+        _exampleMeaning    = State(initialValue: word.exampleMeaning)
+        _selectedPOSID     = State(initialValue: word.posTagID)
+        _selectedFolderIDs = State(initialValue: Set(store.folders.filter { $0.wordIDs.contains(word.id) }.map { $0.id }))
     }
 
     var canSave: Bool { !term.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -42,6 +44,52 @@ struct EditWordView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("품사").font(.system(size: 11, weight: .semibold)).foregroundColor(.secondary)
                                 POSTagSelector(store: store, selectedID: $selectedPOSID)
+                            }
+                        }
+
+                        if !store.folders.isEmpty {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("단어장").font(.system(size: 11, weight: .semibold)).foregroundColor(.secondary)
+                                VStack(spacing: 0) {
+                                    ForEach(store.folders) { folder in
+                                        let isSelected = selectedFolderIDs.contains(folder.id)
+                                        HStack(spacing: 8) {
+                                            ZStack {
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(isSelected ? Color.blue : Color.clear)
+                                                    .frame(width: 15, height: 15)
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .stroke(isSelected ? Color.blue : Color.secondary.opacity(0.4), lineWidth: 1.5)
+                                                    .frame(width: 15, height: 15)
+                                                if isSelected {
+                                                    Image(systemName: "checkmark")
+                                                        .font(.system(size: 9, weight: .bold))
+                                                        .foregroundColor(.white)
+                                                }
+                                            }
+                                            Image(systemName: "folder")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(isSelected ? .blue : .secondary)
+                                            Text(folder.name)
+                                                .font(.system(size: 13))
+                                                .foregroundColor(isSelected ? .blue : .primary)
+                                            Spacer()
+                                            Text("\(folder.wordIDs.count)개")
+                                                .font(.system(size: 11)).foregroundColor(.secondary)
+                                        }
+                                        .padding(.horizontal, 10).padding(.vertical, 7)
+                                        .background(isSelected ? Color.blue.opacity(0.06) : Color.clear)
+                                        .cornerRadius(7)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            if isSelected { selectedFolderIDs.remove(folder.id) }
+                                            else { selectedFolderIDs.insert(folder.id) }
+                                        }
+                                    }
+                                }
+                                .background(Color.primary.opacity(0.04))
+                                .cornerRadius(8)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.08), lineWidth: 1))
                             }
                         }
                     }
@@ -69,6 +117,11 @@ struct EditWordView: View {
             exampleMeaning: exampleMeaning.trimmingCharacters(in: .whitespaces),
             posTagID: selectedPOSID
         )
+        for folder in store.folders {
+            let shouldBeIn = selectedFolderIDs.contains(folder.id)
+            let isIn = store.wordIsInFolder(word.id, folderID: folder.id)
+            if shouldBeIn != isIn { store.toggleWordInFolder(wordID: word.id, folderID: folder.id) }
+        }
         onBack()
     }
 }

@@ -24,6 +24,7 @@ struct DashboardView: View {
 
     @State private var filter: WordFilter = .all
     @State private var searchText: String = ""
+    @State private var selectedPOSID: UUID? = nil
 
     var body: some View {
         ZStack {
@@ -45,7 +46,7 @@ struct DashboardView: View {
                     HStack(spacing: 2) {
                         DashIconButton(systemName: "folder",            tooltip: "단어장")            { onFolder() }
                         DashIconButton(systemName: "plus",              tooltip: "단어 추가")          { onAdd() }
-                        DashIconButton(systemName: "minus",             tooltip: "단어 삭제")          { onDelete() }
+                        DashIconButton(systemName: "minus.circle",      tooltip: "일괄 삭제")          { onDelete() }
                         DashIconButton(systemName: "checkmark.circle",  tooltip: "외운 단어 체크")     { onCheck() }
                         DashIconButton(systemName: "scope",             tooltip: "집중 단어 선택")    { onFocus() }
                         DashIconButton(systemName: "photo",             tooltip: "사진으로 단어 추가") { onImport() }
@@ -91,6 +92,24 @@ struct DashboardView: View {
 
                 Divider().padding(.horizontal, 8)
 
+                if !store.posTags.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 5) {
+                            DashPOSPill(label: "전체", color: .secondary, isSelected: selectedPOSID == nil) {
+                                selectedPOSID = nil
+                            }
+                            ForEach(store.posTags) { tag in
+                                DashPOSPill(
+                                    label: tag.name,
+                                    color: Color(hex: tag.colorHex) ?? .blue,
+                                    isSelected: selectedPOSID == tag.id
+                                ) { selectedPOSID = selectedPOSID == tag.id ? nil : tag.id }
+                            }
+                        }.padding(.horizontal, 10)
+                    }.padding(.vertical, 6)
+                    Divider().padding(.horizontal, 8)
+                }
+
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(displayWords) { word in
@@ -104,22 +123,28 @@ struct DashboardView: View {
                         }
                     }
                 }
-                .frame(height: 365)
+                .frame(height: store.posTags.isEmpty ? 365 : 330)
 
                 Divider().padding(.horizontal, 8)
 
                 HStack {
-                    Group {
-                        switch filter {
-                        case .all:
-                            Text("전체 \(baseWords.count)개")
-                        case .active:
-                            Text("학습중 \(baseWords.filter { !$0.isMemorized }.count)개")
-                        case .memorized:
-                            Text("외운 \(baseWords.filter { $0.isMemorized }.count)개")
+                    VStack(alignment: .leading, spacing: 1) {
+                        let total = baseWords.count
+                        let mem   = baseWords.filter { $0.isMemorized }.count
+                        Group {
+                            switch filter {
+                            case .all:
+                                Text("전체 \(total)개 · \(mem)개 외움")
+                            case .active:
+                                Text("학습중 \(baseWords.filter { !$0.isMemorized }.count)개")
+                            case .memorized:
+                                Text("외운 \(mem)개")
+                            }
                         }
+                        .font(.system(size: 11)).foregroundColor(.secondary)
+                        Text("오늘 \(store.todayViewedCount)개 학습")
+                            .font(.system(size: 10)).foregroundColor(.secondary.opacity(0.65))
                     }
-                    .font(.system(size: 11)).foregroundColor(.secondary)
                     Spacer()
                     Button(action: { store.jumpToBeginning() }) {
                         HStack(spacing: 3) {
@@ -159,11 +184,14 @@ struct DashboardView: View {
     }
 
     var displayWords: [Word] {
-        let base: [Word]
+        var base: [Word]
         switch filter {
         case .all:       base = baseWords
         case .active:    base = baseWords.filter { !$0.isMemorized }
         case .memorized: base = baseWords.filter { $0.isMemorized }
+        }
+        if let posID = selectedPOSID {
+            base = base.filter { $0.posTagID == posID }
         }
         guard !searchText.isEmpty else { return base }
         let q = searchText.lowercased()
@@ -257,6 +285,22 @@ struct RowActionButton: View {
         .simultaneousGesture(DragGesture(minimumDistance: 0)
             .onChanged { _ in isPressed = true }
             .onEnded { _ in isPressed = false })
+    }
+}
+
+struct DashPOSPill: View {
+    let label: String
+    let color: Color
+    let isSelected: Bool
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(isSelected ? .white : color)
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(RoundedRectangle(cornerRadius: 4).fill(isSelected ? color : color.opacity(0.12)))
+        }.buttonStyle(.plain)
     }
 }
 

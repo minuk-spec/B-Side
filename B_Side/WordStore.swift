@@ -24,6 +24,7 @@ struct Word: Identifiable, Codable, Equatable {
     var posTagID: UUID? = nil       // 커스텀 품사 태그 ID
     var isMemorized: Bool = false
     var isFocused: Bool = false
+    var lastViewedAt: Date? = nil
 }
 
 class WordStore {
@@ -48,6 +49,11 @@ class WordStore {
     }
     private var shuffledIndices: [Int] = []
     private var shuffleHistory: [Int] = []
+
+    var todayViewedCount: Int {
+        let cal = Calendar.current
+        return words.filter { $0.lastViewedAt.map { cal.isDateInToday($0) } ?? false }.count
+    }
 
     private let wordsKey  = "bord_words_v4"
     private let foldersKey = "bord_folders_v1"
@@ -281,6 +287,15 @@ class WordStore {
             }
         }
         isReverse = UserDefaults.standard.bool(forKey: "bord_reverse")
+    }
+
+    func recordCurrentWordView() {
+        guard let word = currentWord,
+              let i = words.firstIndex(where: { $0.id == word.id }) else { return }
+        let cal = Calendar.current
+        guard !(words[i].lastViewedAt.map { cal.isDateInToday($0) } ?? false) else { return }
+        words[i].lastViewedAt = Date()
+        save()
     }
 
     private func buildShuffleQueue() {
