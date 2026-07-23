@@ -23,6 +23,7 @@ struct ImportImageView: View {
     @State private var errorMessage: String? = nil
     @State private var isDragging = false
     @State private var phase: Phase = .pick
+    @State private var batchPOSTagID: UUID? = nil
 
     enum Phase { case pick, result }
 
@@ -51,6 +52,13 @@ struct ImportImageView: View {
             .buttonStyle(.plain)
             Text("사진으로 단어 추가")
                 .font(.system(size: 13, weight: .semibold))
+            Text("Beta")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(Color.orange)
+                .clipShape(Capsule())
             Spacer()
             Button("닫기") { onClose() }
                 .buttonStyle(.plain).font(.system(size: 12)).foregroundColor(.secondary)
@@ -114,11 +122,29 @@ struct ImportImageView: View {
                     .font(.system(size: 12)).foregroundColor(.secondary)
                 Spacer()
                 Button("다시 선택") {
-                    entries = []; phase = .pick; errorMessage = nil
+                    entries = []; phase = .pick; errorMessage = nil; batchPOSTagID = nil
                 }
                 .buttonStyle(.plain).font(.system(size: 12)).foregroundColor(.blue)
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
+
+            if !store.posTags.isEmpty {
+                Divider().padding(.horizontal, 8)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 5) {
+                        ImportPOSPill(label: "태그 없음", color: .secondary, isSelected: batchPOSTagID == nil) { batchPOSTagID = nil }
+                        ForEach(store.posTags) { tag in
+                            ImportPOSPill(
+                                label: tag.name,
+                                color: Color(hex: tag.colorHex) ?? .blue,
+                                isSelected: batchPOSTagID == tag.id
+                            ) { batchPOSTagID = tag.id }
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                }
+                .padding(.vertical, 7)
+            }
 
             Divider().padding(.horizontal, 8)
 
@@ -316,9 +342,26 @@ struct ImportImageView: View {
 
     func commit() {
         for e in entries where e.selected {
-            store.addWord(term: e.term, meaning: e.meaning, example: "", exampleMeaning: "", posTagID: nil)
+            store.addWord(term: e.term, meaning: e.meaning, example: "", exampleMeaning: "", posTagID: batchPOSTagID)
         }
         onBack()
+    }
+}
+
+struct ImportPOSPill: View {
+    let label: String
+    let color: Color
+    let isSelected: Bool
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(isSelected ? .white : color)
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(RoundedRectangle(cornerRadius: 4).fill(isSelected ? color : color.opacity(0.12)))
+        }
+        .buttonStyle(.plain)
     }
 }
 

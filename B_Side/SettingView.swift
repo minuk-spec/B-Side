@@ -1,15 +1,16 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 struct SettingView: View {
     let store: WordStore
     var onBack: () -> Void
     var onClose: () -> Void
     var onShowTutorial: (() -> Void)? = nil
-    @State private var playMode: WordStore.PlayMode
-    var isShuffle:   Bool { playMode == .shuffle }
-    var isRepeat:    Bool { playMode == .repeat }
-    var isFocusMode: Bool { playMode == .focus }
+    var onSuspendMonitor: (() -> Void)? = nil
+    var onResumeMonitor: (() -> Void)? = nil
+    @State private var playOrder: WordStore.PlayOrder
+    @State private var playFilter: WordStore.PlayFilter
     @State private var isReverse: Bool
     @State private var autoInterval: Int
     @State private var feedbackMessage: String? = nil
@@ -17,9 +18,14 @@ struct SettingView: View {
     @State private var updateState: Updater.State = .idle
     let intervalOptions = [5, 15, 30]
 
-    init(store: WordStore, onBack: @escaping () -> Void, onClose: @escaping () -> Void, onShowTutorial: (() -> Void)? = nil) {
-        self.store = store; self.onBack = onBack; self.onClose = onClose; self.onShowTutorial = onShowTutorial
-        _playMode     = State(initialValue: store.playMode)
+    init(store: WordStore, onBack: @escaping () -> Void, onClose: @escaping () -> Void,
+         onShowTutorial: (() -> Void)? = nil, onSuspendMonitor: (() -> Void)? = nil, onResumeMonitor: (() -> Void)? = nil) {
+        self.store = store; self.onBack = onBack; self.onClose = onClose
+        self.onShowTutorial = onShowTutorial
+        self.onSuspendMonitor = onSuspendMonitor
+        self.onResumeMonitor = onResumeMonitor
+        _playOrder    = State(initialValue: store.playOrder)
+        _playFilter   = State(initialValue: store.playFilter)
         _isReverse    = State(initialValue: store.isReverse)
         _autoInterval = State(initialValue: store.autoInterval)
     }
@@ -41,17 +47,38 @@ struct SettingView: View {
                 Divider().padding(.horizontal, 8)
                 ScrollView {
                     VStack(spacing: 16) {
-                        // 재생 방법
+                        // 재생 순서
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("단어 재생 방법").font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
-                            HStack(spacing: 8) {
-                                SettingToggleButton(systemName: "shuffle", label: "Shuffle", isOn: playMode == .shuffle) { playMode = playMode == .shuffle ? .normal : .shuffle }
-                                SettingToggleButton(systemName: "repeat",  label: "Repeat",  isOn: playMode == .repeat)  { playMode = playMode == .repeat  ? .normal : .repeat  }
-                                SettingToggleButton(systemName: "scope",   label: "Focus",   isOn: playMode == .focus)   { playMode = playMode == .focus   ? .normal : .focus   }
+                            Text("재생 순서").font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
+                            VStack(spacing: 4) {
+                                SettingOptionRow(systemName: "shuffle",                 label: "Shuffle",   isOn: playOrder == .shuffle)     { playOrder = playOrder == .shuffle     ? .none : .shuffle }
+                                SettingOptionRow(systemName: "arrow.right.to.line.alt", label: "순서대로", isOn: playOrder == .sequential)  { playOrder = playOrder == .sequential  ? .none : .sequential }
                             }
-                            HStack(spacing: 8) {
-                                SettingToggleButton(systemName: "arrow.left.arrow.right", label: "Reverse", isOn: isReverse) { isReverse.toggle() }
+                        }
+                        Divider()
+                        // 재생 범위
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("재생 범위").font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
+                            VStack(spacing: 4) {
+                                SettingOptionRow(systemName: "scope",            label: "집중 단어만",    isOn: playFilter == .focus)     { playFilter = playFilter == .focus     ? .all : .focus }
+                                SettingOptionRow(systemName: "checkmark.circle", label: "외운 단어 복습", isOn: playFilter == .memorized) { playFilter = playFilter == .memorized ? .all : .memorized }
                             }
+                        }
+                        Divider()
+                        // 표시 방식
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("표시 방식").font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
+                            HStack(spacing: 10) {
+                                Image(systemName: "arrow.left.arrow.right")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 16)
+                                Text("Reverse").font(.system(size: 13))
+                                Spacer()
+                                Toggle("", isOn: $isReverse).toggleStyle(.switch).labelsHidden().scaleEffect(0.8)
+                            }
+                            .padding(.horizontal, 12).padding(.vertical, 9)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
                         }
                         Divider()
                         // 재생 시간
@@ -143,6 +170,7 @@ struct SettingView: View {
                 }.padding(.horizontal, 16).padding(.vertical, 10)
             }
         }.frame(width: 300)
+        .onAppear { syncUpdaterState() }
     }
 
     @ViewBuilder var updateStatusText: some View {
@@ -159,9 +187,9 @@ struct SettingView: View {
 
     @ViewBuilder var updateActionButton: some View {
         switch updateState {
-        case .available(_, let assetID):
+        case .available(_, let downloadURL):
             Button("업데이트") {
-                Updater.shared.downloadAndInstall(assetID: assetID)
+                Updater.shared.downloadAndInstall(downloadURL: downloadURL)
             }
             .buttonStyle(.plain)
             .font(.system(size: 12, weight: .semibold))
@@ -179,6 +207,12 @@ struct SettingView: View {
             .font(.system(size: 12))
             .foregroundColor(.blue)
         }
+    }
+
+    // 설정 화면이 열릴 때 이미 완료된 자동 체크 결과를 즉시 반영
+    private func syncUpdaterState() {
+        Updater.shared.onStateChange = { state in updateState = state }
+        updateState = Updater.shared.state
     }
 
     func exportData() {
@@ -206,23 +240,27 @@ struct SettingView: View {
     }
 
     func importData() {
-        // Desktop 또는 Documents에서 자동 탐색 (구버전 bord_backup.json도 지원)
-        let locations = [
-            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop/B-side_backup.json"),
-            FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("B-side_backup.json"),
-            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop/bord_backup.json"),
-            FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("bord_backup.json")
-        ]
-        for url in locations {
-            if let data = try? Data(contentsOf: url) {
-                let result = store.importFromData(data)
-                if result.success {
-                    showFeedback("✓ \(result.count)개 단어를 불러왔습니다\n(\(url.lastPathComponent))")
-                    return
-                }
-            }
+        onSuspendMonitor?()
+        NSApp.activate(ignoringOtherApps: true)
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.title = "백업 파일 선택"
+        panel.level = .popUpMenu
+        panel.orderFrontRegardless()
+        let response = panel.runModal()
+        onResumeMonitor?()
+        guard response == .OK, let url = panel.url else { return }
+        guard let data = try? Data(contentsOf: url) else {
+            showFeedback("✗ 파일을 읽을 수 없습니다"); return
         }
-        showFeedback("✗ B-side_backup.json 파일을\n바탕화면 또는 문서 폴더에 넣어주세요")
+        let result = store.importFromData(data)
+        if result.success {
+            showFeedback("✓ \(result.count)개 단어를 불러왔습니다")
+        } else {
+            showFeedback("✗ \(result.error)")
+        }
     }
 
     func showFeedback(_ msg: String) {
@@ -231,11 +269,12 @@ struct SettingView: View {
     }
 
     func save() {
-        store.playMode     = playMode
+        store.playOrder    = playOrder
+        store.playFilter   = playFilter
         store.isReverse    = isReverse
-        store.autoInterval = autoInterval   // store에 직접 저장
-        store.save()                        // UserDefaults에 persist
-        onBack()                            // onBack → showDashboard → SettingView의 onClose에서 startAutoTimer 호출됨
+        store.autoInterval = autoInterval
+        store.save()
+        onBack()
     }
 }
 
@@ -395,6 +434,35 @@ struct POSTagEditRow: View {
 }
 
 // MARK: - Backup / Toggle Buttons
+struct SettingOptionRow: View {
+    let systemName: String; let label: String; let isOn: Bool; let action: () -> Void
+    @State private var isHovered = false
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: systemName)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(isOn ? .blue : .secondary)
+                    .frame(width: 16)
+                Text(label).font(.system(size: 13))
+                Spacer()
+                if isOn {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+            }
+            .padding(.horizontal, 12).padding(.vertical, 9)
+            .background(RoundedRectangle(cornerRadius: 8)
+                .fill(isOn ? Color.blue.opacity(0.08) : (isHovered ? Color.primary.opacity(0.08) : Color.primary.opacity(0.05))))
+            .overlay(RoundedRectangle(cornerRadius: 8)
+                .stroke(isOn ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1))
+        }
+        .buttonStyle(.plain).onHover { isHovered = $0 }
+    }
+}
+
+
 struct BackupButton: View {
     let icon: String; let label: String; let color: Color; let action: () -> Void
     @State private var isHovered = false; @State private var isPressed = false

@@ -63,7 +63,7 @@ struct CheckFocusView: View {
             RoundedRectangle(cornerRadius: 12).fill(.regularMaterial)
                 .shadow(color: .black.opacity(0.18), radius: 12, x: 0, y: 6)
             VStack(spacing: 0) {
-                PanelHeader(title: "모르는 단어", onBack: onBack)
+                PanelHeader(title: "집중 단어", onBack: onBack)
                 Divider().padding(.horizontal, 8)
                 ScrollView {
                     VStack(spacing: 0) {
@@ -78,7 +78,7 @@ struct CheckFocusView: View {
                 }.frame(height: 390)
                 Divider().padding(.horizontal, 8)
                 HStack {
-                    Text("Focus 모드에서만 재생됩니다").font(.system(size: 10)).foregroundColor(.secondary)
+                    Text("집중 단어만 재생됩니다").font(.system(size: 10)).foregroundColor(.secondary)
                     Spacer()
                     SaveButton(enabled: true, action: save)
                 }.padding(.horizontal, 16).padding(.vertical, 10)

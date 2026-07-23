@@ -10,6 +10,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     var eventMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if relocateToApplicationsIfNeeded() { return }
+
         NSApp.setActivationPolicy(.accessory)
         store.onChange = { [weak self] in
             DispatchQueue.main.async { self?.updateTitle() }
@@ -51,6 +53,43 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 self?.showTutorial()
             }
         }
+
+        // 실행 후 3초 뒤 업데이트 자동 확인
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            Updater.shared.checkForUpdate()
+        }
+    }
+
+    // /Applications 밖에서 실행된 경우 조용히 이동 후 재시작
+    @discardableResult
+    func relocateToApplicationsIfNeeded() -> Bool {
+        let src = Bundle.main.bundleURL.path
+        guard !src.hasPrefix("/Applications") else { return false }
+
+        let target = "/Applications/B_Side.app"
+        let scriptPath = NSTemporaryDirectory() + "bside_relocate.sh"
+        let script = """
+        #!/bin/bash
+        sleep 1
+        rm -rf "\(target)"
+        /usr/bin/ditto "\(src)" "\(target)"
+        /usr/bin/xattr -cr "\(target)"
+        open "\(target)"
+        rm -f "\(scriptPath)"
+        """
+        do {
+            try script.write(toFile: scriptPath, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes(
+                [.posixPermissions: NSNumber(value: 0o755)], ofItemAtPath: scriptPath)
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/bin/bash")
+            p.arguments = [scriptPath]
+            try p.run()
+            NSApp.terminate(nil)
+        } catch {
+            return false
+        }
+        return true
     }
 
     func updateTitle() {
@@ -64,12 +103,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     func startAutoTimer() {
         autoTimer?.invalidate()
         autoTimer = nil
-        // always read from store directly — store.autoInterval is updated on save
         let seconds = store.autoInterval > 0 ? store.autoInterval : 15
-        autoTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(seconds), repeats: true) { [weak self] _ in
-            self?.store.next()
+        let timer = Timer(timeInterval: TimeInterval(seconds), repeats: true) { [weak self] _ in
+            self?.store.next(manual: false)
         }
-        RunLoop.main.add(autoTimer!, forMode: .common)
+        RunLoop.main.add(timer, forMode: .common)
+        autoTimer = timer
     }
 
     func showTutorial() {
@@ -144,7 +183,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                     store: s.store,
                     onBack: { s.startAutoTimer(); s.showDashboard() },
                     onClose: { s.closePopover(); s.startAutoTimer() },
-                    onShowTutorial: { s.showTutorial() }
+                    onShowTutorial: { s.showTutorial() },
+                    onSuspendMonitor: { if let m = s.eventMonitor { NSEvent.removeMonitor(m); s.eventMonitor = nil } },
+                    onResumeMonitor: { s.startEventMonitor() }
                 )), width: 300, height: 410)
             },
             onFolder: { [weak self] in
@@ -172,6 +213,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             onAddToFolder: { [weak self] word in
                 guard let s = self else { return }
                 s.replacePopover(view: AnyView(AddToFolderView(store: s.store, word: word, onBack: { s.showDashboard() })), width: 300, height: 390)
+            },
+            onDeleteWord: { [weak self] word in
+                guard let s = self else { return }
+                s.store.deleteWords(ids: [word.id])
+                s.showDashboard()
             }
         )
         let p = makePopover(view: AnyView(view), width: 300, height: 390)

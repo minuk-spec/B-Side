@@ -31,18 +31,23 @@ class WordStore {
     var folders: [WordFolder] = []
     var posTags: [POSTag] = []      // 사용자 정의 품사
     var currentIndex: Int = 0
-    // 재생 방법 — 상호 배타적 단일 선택
-    enum PlayMode: String { case normal, shuffle, `repeat`, focus }
-    var playMode: PlayMode = .normal
-    var isShuffle:   Bool { playMode == .shuffle }
-    var isRepeat:    Bool { playMode == .repeat }
-    var isFocusMode: Bool { playMode == .focus }
+    // 재생 방식 (어떻게 재생하나)
+    enum PlayOrder: String { case none, sequential, shuffle }
+    // 재생 범위 (어떤 단어를 재생하나)
+    enum PlayFilter: String { case all, focus, memorized }
+    var playOrder: PlayOrder = .none
+    var playFilter: PlayFilter = .all
+    var isShuffle:         Bool { playOrder == .shuffle }
+    var isSequential:      Bool { playOrder == .sequential }
+    var isFocusFilter:     Bool { playFilter == .focus }
+    var isMemorizedFilter: Bool { playFilter == .memorized }
     var isReverse:   Bool = false
     var autoInterval: Int = 15
     var activeFolderID: UUID? = nil {
         didSet { buildShuffleQueue() }
     }
     private var shuffledIndices: [Int] = []
+    private var shuffleHistory: [Int] = []
 
     private let wordsKey  = "bord_words_v4"
     private let foldersKey = "bord_folders_v1"
@@ -79,7 +84,11 @@ class WordStore {
         } else {
             base = words
         }
-        return base.filter { !$0.isMemorized && (!isFocusMode || $0.isFocused) }
+        switch playFilter {
+        case .all:       return base.filter { !$0.isMemorized }
+        case .focus:     return base.filter { !$0.isMemorized && $0.isFocused }
+        case .memorized: return base.filter { $0.isMemorized }
+        }
     }
 
     var currentWord: Word? {
@@ -89,12 +98,17 @@ class WordStore {
     }
 
     func next(manual: Bool = false) {
-        guard !isRepeat || manual else { return }
         let active = activeWords
         guard !active.isEmpty else { return }
+        if !manual {
+            guard isShuffle || isSequential else { return }
+        }
         if isShuffle {
             if shuffledIndices.isEmpty { buildShuffleQueue() }
-            if !shuffledIndices.isEmpty { currentIndex = shuffledIndices.removeFirst() }
+            if !shuffledIndices.isEmpty {
+                shuffleHistory.append(currentIndex)
+                currentIndex = shuffledIndices.removeFirst()
+            }
         } else {
             currentIndex = (currentIndex + 1) % active.count
         }
@@ -104,7 +118,12 @@ class WordStore {
     func previous() {
         let active = activeWords
         guard !active.isEmpty else { return }
-        currentIndex = (currentIndex - 1 + active.count) % active.count
+        if isShuffle && !shuffleHistory.isEmpty {
+            shuffledIndices.insert(currentIndex, at: 0)
+            currentIndex = shuffleHistory.removeLast()
+        } else {
+            currentIndex = (currentIndex - 1 + active.count) % active.count
+        }
         onChange?()
     }
 
@@ -230,9 +249,10 @@ class WordStore {
         if let d = try? JSONEncoder().encode(folders)  { UserDefaults.standard.set(d, forKey: foldersKey) }
         if let d = try? JSONEncoder().encode(posTags)  { UserDefaults.standard.set(d, forKey: posKey) }
         // persist settings
-        UserDefaults.standard.set(autoInterval, forKey: "bord_interval")
-        UserDefaults.standard.set(playMode.rawValue, forKey: "bord_playmode")
-        UserDefaults.standard.set(isReverse, forKey: "bord_reverse")
+        UserDefaults.standard.set(autoInterval,        forKey: "bord_interval")
+        UserDefaults.standard.set(playOrder.rawValue,  forKey: "bord_playorder")
+        UserDefaults.standard.set(playFilter.rawValue, forKey: "bord_playfilter")
+        UserDefaults.standard.set(isReverse,           forKey: "bord_reverse")
     }
 
     private func load() {
@@ -245,12 +265,26 @@ class WordStore {
         // load settings
         let savedInterval = UserDefaults.standard.integer(forKey: "bord_interval")
         if savedInterval > 0 { autoInterval = savedInterval }
-        if let raw = UserDefaults.standard.string(forKey: "bord_playmode"),
-           let mode = PlayMode(rawValue: raw) { playMode = mode }
+        if let raw = UserDefaults.standard.string(forKey: "bord_playorder"),
+           let order = PlayOrder(rawValue: raw) { playOrder = order }
+        if let raw = UserDefaults.standard.string(forKey: "bord_playfilter"),
+           let filter = PlayFilter(rawValue: raw) { playFilter = filter }
+        // 구버전 PlayMode 마이그레이션
+        if UserDefaults.standard.string(forKey: "bord_playorder") == nil,
+           let raw = UserDefaults.standard.string(forKey: "bord_playmode") {
+            switch raw {
+            case "shuffle":   playOrder = .shuffle
+            case "repeat":    playOrder = .sequential
+            case "focus":     playFilter = .focus
+            case "memorized": playFilter = .memorized
+            default: break
+            }
+        }
         isReverse = UserDefaults.standard.bool(forKey: "bord_reverse")
     }
 
     private func buildShuffleQueue() {
+        shuffleHistory = []
         shuffledIndices = Array(0..<activeWords.count).shuffled()
     }
 }

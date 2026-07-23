@@ -20,8 +20,10 @@ struct DashboardView: View {
     var onQuit: (() -> Void)? = nil
     var onEdit: ((Word) -> Void)?
     var onAddToFolder: ((Word) -> Void)?
+    var onDeleteWord: ((Word) -> Void)? = nil
 
     @State private var filter: WordFilter = .all
+    @State private var searchText: String = ""
 
     var body: some View {
         ZStack {
@@ -45,7 +47,7 @@ struct DashboardView: View {
                         DashIconButton(systemName: "plus",              tooltip: "단어 추가")          { onAdd() }
                         DashIconButton(systemName: "minus",             tooltip: "단어 삭제")          { onDelete() }
                         DashIconButton(systemName: "checkmark.circle",  tooltip: "외운 단어 체크")     { onCheck() }
-                        DashIconButton(systemName: "scope",             tooltip: "모르는 단어 선택")   { onFocus() }
+                        DashIconButton(systemName: "scope",             tooltip: "집중 단어 선택")    { onFocus() }
                         DashIconButton(systemName: "photo",             tooltip: "사진으로 단어 추가") { onImport() }
                         DashIconButton(systemName: "gearshape",         tooltip: "설정")              { onSetting() }
                     }
@@ -74,20 +76,50 @@ struct DashboardView: View {
 
                 Divider().padding(.horizontal, 8)
 
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass").font(.system(size: 11)).foregroundColor(.secondary)
+                    TextField("검색", text: $searchText).textFieldStyle(.plain).font(.system(size: 12))
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill").font(.system(size: 11)).foregroundColor(.secondary)
+                        }.buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(Color.primary.opacity(0.05)).cornerRadius(7)
+                .padding(.horizontal, 10).padding(.vertical, 5)
+
+                Divider().padding(.horizontal, 8)
+
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(displayWords) { word in
-                            WordRowView(store: store, word: word, onTap: { onEdit?(word) }, onFolderTap: { onAddToFolder?(word) }, onPlayFrom: { store.jumpTo(wordID: word.id) })
+                            WordRowView(
+                                store: store, word: word,
+                                onTap: { onEdit?(word) },
+                                onFolderTap: { onAddToFolder?(word) },
+                                onPlayFrom: { store.jumpTo(wordID: word.id) },
+                                onDelete: onDeleteWord != nil ? { onDeleteWord!(word) } : nil
+                            )
                         }
                     }
                 }
-                .frame(height: 390)
+                .frame(height: 365)
 
                 Divider().padding(.horizontal, 8)
 
                 HStack {
-                    Text("전체 \(store.words.count)개")
-                        .font(.system(size: 11)).foregroundColor(.secondary)
+                    Group {
+                        switch filter {
+                        case .all:
+                            Text("전체 \(baseWords.count)개")
+                        case .active:
+                            Text("학습중 \(baseWords.filter { !$0.isMemorized }.count)개")
+                        case .memorized:
+                            Text("외운 \(baseWords.filter { $0.isMemorized }.count)개")
+                        }
+                    }
+                    .font(.system(size: 11)).foregroundColor(.secondary)
                     Spacer()
                     Button(action: { store.jumpToBeginning() }) {
                         HStack(spacing: 3) {
@@ -118,19 +150,24 @@ struct DashboardView: View {
         .frame(width: 300)
     }
 
-    var displayWords: [Word] {
-        let base: [Word]
+    var baseWords: [Word] {
         if let fid = store.activeFolderID,
            let folder = store.folders.first(where: { $0.id == fid }) {
-            base = store.words.filter { folder.wordIDs.contains($0.id) }
-        } else {
-            base = store.words
+            return store.words.filter { folder.wordIDs.contains($0.id) }
         }
+        return store.words
+    }
+
+    var displayWords: [Word] {
+        let base: [Word]
         switch filter {
-        case .all:       return base
-        case .active:    return base.filter { !$0.isMemorized }
-        case .memorized: return base.filter { $0.isMemorized }
+        case .all:       base = baseWords
+        case .active:    base = baseWords.filter { !$0.isMemorized }
+        case .memorized: base = baseWords.filter { $0.isMemorized }
         }
+        guard !searchText.isEmpty else { return base }
+        let q = searchText.lowercased()
+        return base.filter { $0.term.lowercased().contains(q) || $0.meaning.lowercased().contains(q) }
     }
 }
 
@@ -140,6 +177,7 @@ struct WordRowView: View {
     var onTap: () -> Void
     var onFolderTap: (() -> Void)? = nil
     var onPlayFrom: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
     @State private var isHovered = false
 
     var body: some View {
@@ -155,7 +193,7 @@ struct WordRowView: View {
                     Text(word.term)
                         .font(.system(size: 13, weight: word.isMemorized ? .regular : .medium))
                         .foregroundColor(word.isMemorized ? .secondary : (word.isFocused ? Color(red: 1.0, green: 0.6, blue: 0.1) : .primary))
-                        .strikethrough(word.isMemorized)
+
 
                     // 품사 태그 (커스텀)
                     if let pid = word.posTagID,
@@ -183,6 +221,9 @@ struct WordRowView: View {
                     }
                     RowActionButton(systemName: "play.fill", tooltip: "여기서부터 재생") { onPlayFrom?() }
                     RowActionButton(systemName: "pencil", tooltip: "단어 수정") { onTap() }
+                    if onDelete != nil {
+                        RowActionButton(systemName: "trash", tooltip: "삭제", tintColor: .red) { onDelete?() }
+                    }
                 }
             }
         }
@@ -196,6 +237,7 @@ struct WordRowView: View {
 struct RowActionButton: View {
     let systemName: String
     let tooltip: String
+    var tintColor: Color = .blue
     let action: () -> Void
     @State private var isHovered = false
     @State private var isPressed = false
@@ -204,10 +246,10 @@ struct RowActionButton: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(isPressed ? .white : (isHovered ? .primary : .secondary))
+                .foregroundColor(isPressed ? .white : (isHovered ? tintColor : .secondary))
                 .frame(width: 24, height: 22)
                 .background(RoundedRectangle(cornerRadius: 5)
-                    .fill(isPressed ? Color.blue : (isHovered ? Color.primary.opacity(0.1) : Color.clear)))
+                    .fill(isPressed ? tintColor : (isHovered ? tintColor.opacity(0.12) : Color.clear)))
         }
         .buttonStyle(.plain)
         .help(tooltip)
