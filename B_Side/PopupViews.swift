@@ -32,7 +32,7 @@ struct TapView: View {
             }
             if onToggleFocused != nil || onToggleMemorized != nil {
                 Divider()
-                HStack(spacing: 16) {
+                HStack {
                     if onToggleFocused != nil {
                         Button(action: { onToggleFocused?() }) {
                             HStack(spacing: 5) {
@@ -44,6 +44,7 @@ struct TapView: View {
                         }.buttonStyle(.plain)
                     }
                     if onToggleMemorized != nil {
+                        Spacer()
                         Button(action: { onToggleMemorized?() }) {
                             HStack(spacing: 5) {
                                 Image(systemName: word.isMemorized ? "checkmark.circle.fill" : "checkmark.circle")

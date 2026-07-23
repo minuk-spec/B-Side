@@ -16,22 +16,23 @@ struct FolderListView: View {
             RoundedRectangle(cornerRadius: 12).fill(.regularMaterial)
                 .shadow(color: .black.opacity(0.18), radius: 12, x: 0, y: 6)
             VStack(spacing: 0) {
-                HStack {
-                    Button(action: onBack) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "chevron.left").font(.system(size: 11, weight: .semibold))
-                            Text("뒤로").font(.system(size: 12))
-                        }
-                        .foregroundColor(.secondary).padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.clear))
-                    }.buttonStyle(.plain)
-                    Spacer()
+                ZStack {
                     Text("단어장").font(.system(size: 13, weight: .semibold))
-                    Spacer()
-                    Button(action: { showingAdd = true }) {
-                        Image(systemName: "plus").font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.blue)
-                    }.buttonStyle(.plain)
+                    HStack {
+                        Button(action: onBack) {
+                            HStack(spacing: 3) {
+                                Image(systemName: "chevron.left").font(.system(size: 11, weight: .semibold))
+                                Text("뒤로").font(.system(size: 12))
+                            }
+                            .foregroundColor(.secondary).padding(.horizontal, 8).padding(.vertical, 4)
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.clear))
+                        }.buttonStyle(.plain)
+                        Spacer()
+                        Button(action: { showingAdd = true }) {
+                            Image(systemName: "plus").font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.blue)
+                        }.buttonStyle(.plain)
+                    }
                 }
                 .padding(.horizontal, 14).padding(.vertical, 11)
 

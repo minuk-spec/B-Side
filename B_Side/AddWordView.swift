@@ -11,6 +11,10 @@ struct AddWordView: View {
     @State private var exampleMeaning = ""
     @State private var selectedPOSID: UUID? = nil
     @State private var selectedFolderIDs: Set<UUID> = []
+    @State private var showAddPOS = false
+    @State private var newPOSName = ""
+    @State private var newPOSColorHex = "#4A90E2"
+    @State private var posRefresh = UUID()
     @FocusState private var focused: Field?
     enum Field { case term, meaning, example, exampleMeaning }
     var canSave: Bool { !term.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -29,10 +33,38 @@ struct AddWordView: View {
                         InputField(placeholder: "예문", text: $example).focused($focused, equals: .example)
                         InputField(placeholder: "예문 뜻", text: $exampleMeaning).focused($focused, equals: .exampleMeaning)
 
-                        if !store.posTags.isEmpty {
-                            VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
                                 Text("품사").font(.system(size: 11, weight: .semibold)).foregroundColor(.secondary)
-                                POSTagSelector(store: store, selectedID: $selectedPOSID)
+                                Spacer()
+                                Button(action: { showAddPOS.toggle(); if !showAddPOS { newPOSName = "" } }) {
+                                    Image(systemName: showAddPOS ? "xmark" : "plus")
+                                        .font(.system(size: 10, weight: .medium)).foregroundColor(.secondary)
+                                }.buttonStyle(.plain)
+                            }
+                            if !store.posTags.isEmpty {
+                                POSTagSelector(store: store, selectedID: $selectedPOSID).id(posRefresh)
+                            }
+                            if showAddPOS {
+                                HStack(spacing: 6) {
+                                    TextField("품사 이름", text: $newPOSName)
+                                        .textFieldStyle(.plain).font(.system(size: 12))
+                                        .padding(.horizontal, 8).padding(.vertical, 5)
+                                        .background(Color.primary.opacity(0.05)).cornerRadius(6)
+                                    ForEach(["#4A90E2","#27AE60","#E67E22","#8E44AD"], id: \.self) { hex in
+                                        Button(action: { newPOSColorHex = hex }) {
+                                            Circle().fill(Color(hex: hex) ?? .blue).frame(width: 18, height: 18)
+                                                .overlay(Circle().stroke(newPOSColorHex == hex ? Color.primary : .clear, lineWidth: 1.5))
+                                        }.buttonStyle(.plain)
+                                    }
+                                    Button("추가") {
+                                        let n = newPOSName.trimmingCharacters(in: .whitespaces)
+                                        guard !n.isEmpty else { return }
+                                        store.addPOSTag(name: n, colorHex: newPOSColorHex)
+                                        selectedPOSID = store.posTags.last?.id
+                                        newPOSName = ""; showAddPOS = false; posRefresh = UUID()
+                                    }.buttonStyle(.plain).font(.system(size: 12, weight: .semibold)).foregroundColor(.blue)
+                                }
                             }
                         }
 

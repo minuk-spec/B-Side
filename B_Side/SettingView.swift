@@ -14,7 +14,6 @@ struct SettingView: View {
     @State private var isReverse: Bool
     @State private var autoInterval: Int
     @State private var feedbackMessage: String? = nil
-    @State private var showPOSManager = false
     @State private var updateState: Updater.State = .idle
     let intervalOptions = [5, 15, 30]
 
@@ -31,11 +30,7 @@ struct SettingView: View {
     }
 
     var body: some View {
-        if showPOSManager {
-            POSManagerView(store: store, onBack: { showPOSManager = false })
-        } else {
-            mainView
-        }
+        mainView
     }
 
     var mainView: some View {
@@ -92,24 +87,6 @@ struct SettingView: View {
                                     ) { autoInterval = sec }
                                 }
                             }
-                        }
-                        Divider()
-                        // 품사 관리
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("품사 태그 관리").font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
-                            Button(action: { showPOSManager = true }) {
-                                HStack {
-                                    Image(systemName: "tag").font(.system(size: 13))
-                                    Text("품사 태그 편집").font(.system(size: 13))
-                                    Spacer()
-                                    Text("\(store.posTags.count)개")
-                                        .font(.system(size: 11)).foregroundColor(.secondary)
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 11)).foregroundColor(.secondary)
-                                }
-                                .padding(.horizontal, 12).padding(.vertical, 9)
-                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
-                            }.buttonStyle(.plain)
                         }
                         Divider()
                         // 백업 — 파일 저장/불러오기

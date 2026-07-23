@@ -11,8 +11,6 @@ struct DashboardView: View {
     let store: WordStore
     var onAdd: () -> Void
     var onDelete: () -> Void
-    var onCheck: () -> Void
-    var onFocus: () -> Void
     var onSetting: () -> Void
     var onFolder: () -> Void
     var onImport: () -> Void
@@ -47,8 +45,6 @@ struct DashboardView: View {
                         DashIconButton(systemName: "folder",            tooltip: "단어장")            { onFolder() }
                         DashIconButton(systemName: "plus",              tooltip: "단어 추가")          { onAdd() }
                         DashIconButton(systemName: "minus.circle",      tooltip: "일괄 삭제")          { onDelete() }
-                        DashIconButton(systemName: "checkmark.circle",  tooltip: "외운 단어 체크")     { onCheck() }
-                        DashIconButton(systemName: "scope",             tooltip: "집중 단어 선택")    { onFocus() }
                         DashIconButton(systemName: "photo",             tooltip: "사진으로 단어 추가") { onImport() }
                         DashIconButton(systemName: "gearshape",         tooltip: "설정")              { onSetting() }
                     }
@@ -123,29 +119,33 @@ struct DashboardView: View {
                         }
                     }
                 }
-                .frame(height: store.posTags.isEmpty ? 365 : 330)
+                .frame(height: store.posTags.isEmpty ? 352 : 317)
 
                 Divider().padding(.horizontal, 8)
 
                 HStack {
-                    VStack(alignment: .leading, spacing: 1) {
-                        let total = baseWords.count
-                        let mem   = baseWords.filter { $0.isMemorized }.count
-                        Group {
-                            switch filter {
-                            case .all:
-                                Text("전체 \(total)개 · \(mem)개 외움")
-                            case .active:
-                                Text("학습중 \(baseWords.filter { !$0.isMemorized }.count)개")
-                            case .memorized:
-                                Text("외운 \(mem)개")
-                            }
+                    let total = baseWords.count
+                    let mem   = baseWords.filter { $0.isMemorized }.count
+                    Group {
+                        switch filter {
+                        case .all:
+                            Text("전체 \(total)개 · \(mem)개 외움")
+                        case .active:
+                            Text("학습중 \(baseWords.filter { !$0.isMemorized }.count)개")
+                        case .memorized:
+                            Text("외운 \(mem)개")
                         }
-                        .font(.system(size: 11)).foregroundColor(.secondary)
-                        Text("오늘 \(store.todayViewedCount)개 학습")
-                            .font(.system(size: 10)).foregroundColor(.secondary.opacity(0.65))
                     }
+                    .font(.system(size: 11)).foregroundColor(.secondary)
                     Spacer()
+                    Text("오늘 \(store.todayViewedCount)개 학습")
+                        .font(.system(size: 10)).foregroundColor(.secondary.opacity(0.65))
+                }
+                .padding(.horizontal, 16).padding(.vertical, 7)
+
+                Divider().padding(.horizontal, 8)
+
+                HStack {
                     Button(action: { store.jumpToBeginning() }) {
                         HStack(spacing: 3) {
                             Image(systemName: "backward.end.fill").font(.system(size: 10))
@@ -153,7 +153,7 @@ struct DashboardView: View {
                         }
                     }
                     .buttonStyle(.plain).foregroundColor(.secondary)
-                    Divider().frame(height: 12).padding(.horizontal, 4)
+                    Spacer()
                     Button("닫기") { onClose() }
                         .buttonStyle(.plain).font(.system(size: 12)).foregroundColor(.secondary)
                     Divider().frame(height: 12).padding(.horizontal, 4)
@@ -169,7 +169,7 @@ struct DashboardView: View {
                     .buttonStyle(.plain)
                     .help("B-Side 종료")
                 }
-                .padding(.horizontal, 16).padding(.vertical, 10)
+                .padding(.horizontal, 16).padding(.vertical, 8)
             }
         }
         .frame(width: 300)

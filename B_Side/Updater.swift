@@ -129,12 +129,20 @@ class Updater {
             return
         }
 
-        // 3. 새 앱 실행 → 현재 앱 종료
+        // 3. 종료 후 재시작 (shell script로 딜레이 재실행)
         DispatchQueue.main.async {
-            NSWorkspace.shared.open(URL(fileURLWithPath: targetPath))
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                NSApp.terminate(nil)
-            }
+            let script = "#!/bin/bash\nsleep 1.5\nopen '\(targetPath)'\n"
+            let scriptPath = NSTemporaryDirectory() + "bside_relaunch.sh"
+            try? script.write(toFile: scriptPath, atomically: true, encoding: .utf8)
+            let chmod = Process()
+            chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
+            chmod.arguments = ["755", scriptPath]
+            try? chmod.run(); chmod.waitUntilExit()
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/bin/bash")
+            p.arguments = [scriptPath]
+            try? p.run()
+            NSApp.terminate(nil)
         }
     }
 

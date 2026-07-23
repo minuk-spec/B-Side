@@ -178,14 +178,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 guard let s = self else { return }
                 s.replacePopover(view: AnyView(DeleteWordView(store: s.store, onBack: { s.showDashboard() }, onClose: { s.closePopover() })), width: 300, height: 390)
             },
-            onCheck: { [weak self] in
-                guard let s = self else { return }
-                s.replacePopover(view: AnyView(CheckMemorizedView(store: s.store, onBack: { s.showDashboard() }, onClose: { s.closePopover() })), width: 300, height: 390)
-            },
-            onFocus: { [weak self] in
-                guard let s = self else { return }
-                s.replacePopover(view: AnyView(CheckFocusView(store: s.store, onBack: { s.showDashboard() }, onClose: { s.closePopover() })), width: 300, height: 390)
-            },
             onSetting: { [weak self] in
                 guard let s = self else { return }
                 s.replacePopover(view: AnyView(SettingView(
@@ -229,7 +221,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 s.showDashboard()
             }
         )
-        let p = makePopover(view: AnyView(view), width: 300, height: 390)
+        let p = makePopover(view: AnyView(view), width: 300, height: 420)
         p.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover = p
         startEventMonitor()
