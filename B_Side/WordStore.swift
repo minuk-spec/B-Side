@@ -1,4 +1,5 @@
 import Foundation
+import NaturalLanguage
 
 // MARK: - 커스텀 품사 태그
 struct POSTag: Identifiable, Codable, Equatable {
@@ -23,7 +24,6 @@ struct Word: Identifiable, Codable, Equatable {
     var exampleMeaning: String = ""
     var posTagID: UUID? = nil       // 커스텀 품사 태그 ID
     var isMemorized: Bool = false
-    var isFocused: Bool = false
     var lastViewedAt: Date? = nil
 }
 
@@ -35,12 +35,11 @@ class WordStore {
     // 재생 방식 (어떻게 재생하나)
     enum PlayOrder: String { case none, sequential, shuffle }
     // 재생 범위 (어떤 단어를 재생하나)
-    enum PlayFilter: String { case all, focus, memorized }
+    enum PlayFilter: String { case all, memorized }
     var playOrder: PlayOrder = .none
     var playFilter: PlayFilter = .all
     var isShuffle:         Bool { playOrder == .shuffle }
     var isSequential:      Bool { playOrder == .sequential }
-    var isFocusFilter:     Bool { playFilter == .focus }
     var isMemorizedFilter: Bool { playFilter == .memorized }
     var isReverse:   Bool = false
     var autoInterval: Int = 15
@@ -67,7 +66,7 @@ class WordStore {
             words = [
                 Word(term: "Apple",     meaning: "사과",   example: "I ate apples.",         exampleMeaning: "나는 사과를 먹었다."),
                 Word(term: "Run",       meaning: "달리다", example: "She runs every day.",    exampleMeaning: "그녀는 매일 달린다."),
-                Word(term: "Beautiful", meaning: "아름다운", example: "It is beautiful.",     exampleMeaning: "그것은 아름답다.", isFocused: true),
+                Word(term: "Beautiful", meaning: "아름다운", example: "It is beautiful.",     exampleMeaning: "그것은 아름답다."),
             ]
         }
         if posTags.isEmpty {
@@ -92,7 +91,6 @@ class WordStore {
         }
         switch playFilter {
         case .all:       return base.filter { !$0.isMemorized }
-        case .focus:     return base.filter { !$0.isMemorized && $0.isFocused }
         case .memorized: return base.filter { $0.isMemorized }
         }
     }
@@ -173,12 +171,6 @@ class WordStore {
         }
     }
 
-    func toggleFocused(id: UUID) {
-        if let i = words.firstIndex(where: { $0.id == id }) {
-            words[i].isFocused.toggle(); buildShuffleQueue(); save(); onChange?()
-        }
-    }
-
     // MARK: - POS Tag CRUD
     func addPOSTag(name: String, colorHex: String) {
         posTags.append(POSTag(name: name, colorHex: colorHex))
@@ -200,6 +192,30 @@ class WordStore {
     func posTag(for word: Word) -> POSTag? {
         guard let pid = word.posTagID else { return nil }
         return posTags.first { $0.id == pid }
+    }
+
+    func detectPOSTagID(for term: String) -> UUID? {
+        let tagger = NLTagger(tagSchemes: [.lexicalClass])
+        tagger.string = term
+        let (optTag, _) = tagger.tag(at: term.startIndex, unit: .word, scheme: .lexicalClass)
+        guard let tag = optTag, tag != .other, tag != .whitespace else { return nil }
+        let mapping: [NLTag: String] = [.noun: "명사", .verb: "동사", .adjective: "형용사", .adverb: "부사"]
+        guard let keyword = mapping[tag] else { return nil }
+        return posTags.first { $0.name.contains(keyword) }?.id
+    }
+
+    @discardableResult
+    func bulkAutoTagWords() -> Int {
+        var count = 0
+        for i in words.indices {
+            guard words[i].posTagID == nil else { continue }
+            if let tagID = detectPOSTagID(for: words[i].term) {
+                words[i].posTagID = tagID
+                count += 1
+            }
+        }
+        if count > 0 { save() }
+        return count
     }
 
     // MARK: - Folder
@@ -281,7 +297,6 @@ class WordStore {
             switch raw {
             case "shuffle":   playOrder = .shuffle
             case "repeat":    playOrder = .sequential
-            case "focus":     playFilter = .focus
             case "memorized": playFilter = .memorized
             default: break
             }

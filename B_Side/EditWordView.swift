@@ -13,9 +13,11 @@ struct EditWordView: View {
     @State private var selectedPOSID: UUID?
     @State private var selectedFolderIDs: Set<UUID>
     @State private var showAddPOS = false
+    @State private var editPOS = false
     @State private var newPOSName = ""
     @State private var newPOSColorHex = "#4A90E2"
     @State private var posRefresh = UUID()
+    @State private var posDetectTask: DispatchWorkItem?
     @FocusState private var focused: Field?
     enum Field { case term, meaning, example, exampleMeaning }
 
@@ -48,13 +50,23 @@ struct EditWordView: View {
                             HStack {
                                 Text("품사").font(.system(size: 11, weight: .semibold)).foregroundColor(.secondary)
                                 Spacer()
-                                Button(action: { showAddPOS.toggle(); if !showAddPOS { newPOSName = "" } }) {
+                                if !store.posTags.isEmpty {
+                                    Button(action: { editPOS.toggle(); if editPOS { showAddPOS = false } }) {
+                                        Image(systemName: editPOS ? "pencil.slash" : "pencil")
+                                            .font(.system(size: 10, weight: .medium)).foregroundColor(editPOS ? .blue : .secondary)
+                                    }.buttonStyle(.plain)
+                                }
+                                Button(action: { showAddPOS.toggle(); if !showAddPOS { newPOSName = "" }; editPOS = false }) {
                                     Image(systemName: showAddPOS ? "xmark" : "plus")
                                         .font(.system(size: 10, weight: .medium)).foregroundColor(.secondary)
                                 }.buttonStyle(.plain)
                             }
                             if !store.posTags.isEmpty {
-                                POSTagSelector(store: store, selectedID: $selectedPOSID).id(posRefresh)
+                                POSTagSelector(store: store, selectedID: $selectedPOSID, editMode: editPOS, onDelete: { id in
+                                    if selectedPOSID == id { selectedPOSID = nil }
+                                    store.deletePOSTag(id: id)
+                                    posRefresh = UUID()
+                                }).id(posRefresh)
                             }
                             if showAddPOS {
                                 HStack(spacing: 6) {
@@ -137,6 +149,17 @@ struct EditWordView: View {
         }
         .frame(width: 300)
         .onAppear { focused = .term }
+        .onChange(of: term) { newValue in
+            guard selectedPOSID == nil, !newValue.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            posDetectTask?.cancel()
+            let task = DispatchWorkItem { [weak store] in
+                guard let store else { return }
+                let detected = store.detectPOSTagID(for: newValue)
+                DispatchQueue.main.async { if selectedPOSID == nil { selectedPOSID = detected } }
+            }
+            posDetectTask = task
+            DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.5, execute: task)
+        }
     }
 
     func save() {

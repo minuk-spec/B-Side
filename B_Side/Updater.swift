@@ -129,18 +129,13 @@ class Updater {
             return
         }
 
-        // 3. 종료 후 재시작 (shell script로 딜레이 재실행)
+        // 3. 종료 후 재시작 (nohup으로 부모 종료 시 SIGHUP 차단)
         DispatchQueue.main.async {
-            let script = "#!/bin/bash\nsleep 1.5\nopen '\(targetPath)'\n"
-            let scriptPath = NSTemporaryDirectory() + "bside_relaunch.sh"
-            try? script.write(toFile: scriptPath, atomically: true, encoding: .utf8)
-            let chmod = Process()
-            chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
-            chmod.arguments = ["755", scriptPath]
-            try? chmod.run(); chmod.waitUntilExit()
             let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/bin/bash")
-            p.arguments = [scriptPath]
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/nohup")
+            p.arguments = ["/bin/bash", "-c", "sleep 1.5 && open '\(targetPath)'"]
+            p.standardOutput = FileHandle.nullDevice
+            p.standardError  = FileHandle.nullDevice
             try? p.run()
             NSApp.terminate(nil)
         }

@@ -32,7 +32,7 @@ class StatusBarView: NSView {
         rightBtn.frame = NSRect(x: bounds.width - aw, y: 0, width: aw,                    height: h)
     }
 
-    func setWord(_ term: String, isFocused: Bool) { wordBtn.setWord(term, isFocused: isFocused) }
+    func setWord(_ term: String) { wordBtn.setWord(term) }
     func setHoverText(_ text: String?)            { wordBtn.setHoverText(text) }
 }
 
@@ -85,7 +85,6 @@ class WordButton: NSView {
     var onRightClick: (() -> Void)?
 
     private var term: String = ""
-    private var isFocused: Bool = false
     private var hoverText: String? = nil
     private var isHovered = false, isPressed = false
     private var hoverOverlay: HoverOverlayWindow?
@@ -97,15 +96,13 @@ class WordButton: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
 
-    func setWord(_ term: String, isFocused: Bool) { self.term = term; self.isFocused = isFocused; needsDisplay = true }
+    func setWord(_ term: String) { self.term = term; needsDisplay = true }
     func setHoverText(_ text: String?) { self.hoverText = text; if text == nil { dismissHover() } }
 
     override func draw(_ dirtyRect: NSRect) {
-        let color: NSColor = isFocused
-            ? NSColor(red: 1.0, green: 0.6, blue: 0.1, alpha: 1.0) : .labelColor
         let str = NSAttributedString(string: term, attributes: [
             .font: NSFont.systemFont(ofSize: 13, weight: .medium),
-            .foregroundColor: color
+            .foregroundColor: NSColor.labelColor
         ])
         let sz = str.size()
         let ctx = NSGraphicsContext.current?.cgContext

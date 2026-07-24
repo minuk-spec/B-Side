@@ -12,9 +12,11 @@ struct AddWordView: View {
     @State private var selectedPOSID: UUID? = nil
     @State private var selectedFolderIDs: Set<UUID> = []
     @State private var showAddPOS = false
+    @State private var editPOS = false
     @State private var newPOSName = ""
     @State private var newPOSColorHex = "#4A90E2"
     @State private var posRefresh = UUID()
+    @State private var posDetectTask: DispatchWorkItem?
     @FocusState private var focused: Field?
     enum Field { case term, meaning, example, exampleMeaning }
     var canSave: Bool { !term.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -37,13 +39,23 @@ struct AddWordView: View {
                             HStack {
                                 Text("품사").font(.system(size: 11, weight: .semibold)).foregroundColor(.secondary)
                                 Spacer()
-                                Button(action: { showAddPOS.toggle(); if !showAddPOS { newPOSName = "" } }) {
+                                if !store.posTags.isEmpty {
+                                    Button(action: { editPOS.toggle(); if editPOS { showAddPOS = false } }) {
+                                        Image(systemName: editPOS ? "pencil.slash" : "pencil")
+                                            .font(.system(size: 10, weight: .medium)).foregroundColor(editPOS ? .blue : .secondary)
+                                    }.buttonStyle(.plain)
+                                }
+                                Button(action: { showAddPOS.toggle(); if !showAddPOS { newPOSName = "" }; editPOS = false }) {
                                     Image(systemName: showAddPOS ? "xmark" : "plus")
                                         .font(.system(size: 10, weight: .medium)).foregroundColor(.secondary)
                                 }.buttonStyle(.plain)
                             }
                             if !store.posTags.isEmpty {
-                                POSTagSelector(store: store, selectedID: $selectedPOSID).id(posRefresh)
+                                POSTagSelector(store: store, selectedID: $selectedPOSID, editMode: editPOS, onDelete: { id in
+                                    if selectedPOSID == id { selectedPOSID = nil }
+                                    store.deletePOSTag(id: id)
+                                    posRefresh = UUID()
+                                }).id(posRefresh)
                             }
                             if showAddPOS {
                                 HStack(spacing: 6) {
@@ -127,6 +139,17 @@ struct AddWordView: View {
         }
         .frame(width: 300)
         .onAppear { focused = .term }
+        .onChange(of: term) { newValue in
+            guard selectedPOSID == nil, !newValue.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            posDetectTask?.cancel()
+            let task = DispatchWorkItem { [weak store] in
+                guard let store else { return }
+                let detected = store.detectPOSTagID(for: newValue)
+                DispatchQueue.main.async { if selectedPOSID == nil { selectedPOSID = detected } }
+            }
+            posDetectTask = task
+            DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.5, execute: task)
+        }
     }
 
     func save() {
@@ -152,6 +175,8 @@ struct AddWordView: View {
 struct POSTagSelector: View {
     let store: WordStore
     @Binding var selectedID: UUID?
+    var editMode: Bool = false
+    var onDelete: ((UUID) -> Void)? = nil
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -159,16 +184,34 @@ struct POSTagSelector: View {
                 ForEach(store.posTags) { tag in
                     let isSelected = selectedID == tag.id
                     let color = Color(hex: tag.colorHex) ?? .blue
-                    Button(action: { selectedID = isSelected ? nil : tag.id }) {
-                        Text(tag.name)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(isSelected ? .white : color)
-                            .padding(.horizontal, 10).padding(.vertical, 5)
-                            .background(RoundedRectangle(cornerRadius: 6)
-                                .fill(isSelected ? color : color.opacity(0.1)))
-                            .overlay(RoundedRectangle(cornerRadius: 6)
-                                .stroke(color.opacity(isSelected ? 0 : 0.4), lineWidth: 1))
-                    }.buttonStyle(.plain)
+                    if editMode {
+                        HStack(spacing: 0) {
+                            Text(tag.name)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(color)
+                                .padding(.leading, 10).padding(.trailing, 4).padding(.vertical, 5)
+                            Button(action: { onDelete?(tag.id) }) {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(color.opacity(0.8))
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.trailing, 7)
+                        }
+                        .background(RoundedRectangle(cornerRadius: 6).fill(color.opacity(0.1)))
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(color.opacity(0.4), lineWidth: 1))
+                    } else {
+                        Button(action: { selectedID = isSelected ? nil : tag.id }) {
+                            Text(tag.name)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(isSelected ? .white : color)
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(RoundedRectangle(cornerRadius: 6)
+                                    .fill(isSelected ? color : color.opacity(0.1)))
+                                .overlay(RoundedRectangle(cornerRadius: 6)
+                                    .stroke(color.opacity(isSelected ? 0 : 0.4), lineWidth: 1))
+                        }.buttonStyle(.plain)
+                    }
                 }
             }
         }

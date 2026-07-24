@@ -55,7 +55,6 @@ struct SettingView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("재생 범위").font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
                             VStack(spacing: 4) {
-                                SettingOptionRow(systemName: "scope",            label: "집중 단어만",    isOn: playFilter == .focus)     { playFilter = playFilter == .focus     ? .all : .focus }
                                 SettingOptionRow(systemName: "checkmark.circle", label: "외운 단어 복습", isOn: playFilter == .memorized) { playFilter = playFilter == .memorized ? .all : .memorized }
                             }
                         }
@@ -87,6 +86,26 @@ struct SettingView: View {
                                     ) { autoInterval = sec }
                                 }
                             }
+                        }
+                        Divider()
+                        // 품사 자동 태그
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("품사 자동 태그").font(.system(size: 12, weight: .semibold)).foregroundColor(.secondary)
+                            Button(action: {
+                                let count = store.bulkAutoTagWords()
+                                showFeedback(count > 0 ? "✓ \(count)개 단어에 품사를 달았어요" : "✓ 태그할 단어가 없어요")
+                            }) {
+                                HStack {
+                                    Image(systemName: "tag.fill").font(.system(size: 13)).foregroundColor(.secondary)
+                                    Text("기존 단어 일괄 태그").font(.system(size: 13))
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.system(size: 11)).foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal, 12).padding(.vertical, 9)
+                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
+                            }.buttonStyle(.plain)
+                            Text("태그 없는 단어에만 자동으로 품사를 감지해요 (명사/동사/형용사/부사 태그가 미리 있어야 해요)")
+                                .font(.system(size: 10)).foregroundColor(.secondary)
                         }
                         Divider()
                         // 백업 — 파일 저장/불러오기
@@ -224,8 +243,8 @@ struct SettingView: View {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.title = "백업 파일 선택"
-        panel.level = .popUpMenu
-        panel.orderFrontRegardless()
+        panel.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue + 1)
+        panel.makeKeyAndOrderFront(nil)
         let response = panel.runModal()
         onResumeMonitor?()
         guard response == .OK, let url = panel.url else { return }

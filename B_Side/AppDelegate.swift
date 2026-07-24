@@ -96,7 +96,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let word = store.currentWord
         let displayText = store.isReverse ? (word?.meaning ?? "B-Side") : (word?.term ?? "B-Side")
         let hoverText   = store.isReverse ? word?.term : word?.meaning
-        statusBarView?.setWord(displayText, isFocused: word?.isFocused ?? false)
+        statusBarView?.setWord(displayText)
         statusBarView?.setHoverText(hoverText)
         store.recordCurrentWordView()
     }
@@ -130,10 +130,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             isReverse: store.isReverse,
             onToggleMemorized: { [weak self] in
                 self?.store.toggleMemorized(id: word.id)
-                self?.closePopover()
-            },
-            onToggleFocused: { [weak self] in
-                self?.store.toggleFocused(id: word.id)
                 self?.closePopover()
             }
         ))

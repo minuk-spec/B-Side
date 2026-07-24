@@ -210,17 +210,11 @@ struct WordRowView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            // Focus dot
-            Circle()
-                .fill(word.isFocused ? Color(red: 1.0, green: 0.6, blue: 0.1) : Color.clear)
-                .frame(width: 6, height: 6)
-                .overlay(Circle().stroke(Color.secondary.opacity(0.3), lineWidth: 1))
-
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     Text(word.term)
                         .font(.system(size: 13, weight: word.isMemorized ? .regular : .medium))
-                        .foregroundColor(word.isMemorized ? .secondary : (word.isFocused ? Color(red: 1.0, green: 0.6, blue: 0.1) : .primary))
+                        .foregroundColor(word.isMemorized ? .secondary : .primary)
 
 
                     // 품사 태그 (커스텀)
