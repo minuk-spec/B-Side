@@ -180,13 +180,66 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
 .s4-sel{font-size:11px;color:var(--muted);}
 .s4-addbtn{font-size:12px;font-weight:600;color:#fff;background:#4a9eff;padding:4px 14px;border-radius:6px;}
 
-/* ── FEATURES ────────────────────────────── */
+/* ── FEATURES BENTO ──────────────────────── */
 .features{max-width:640px;margin:0 auto;padding:0 24px 64px;}
-.feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
-.feat{background:var(--surface);padding:20px;}
-.feat-name{font-size:13px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
-.feat-badge{font-size:9px;font-weight:700;color:#fff;background:#f0820a;padding:2px 5px;border-radius:10px;line-height:1.3;}
-.feat-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+.feat-badge{font-size:9px;font-weight:700;color:#fff;background:#f0820a;padding:2px 5px;border-radius:10px;line-height:1.3;flex-shrink:0;}
+.feat-bento{display:flex;flex-direction:column;gap:8px;}
+.fb-row{display:grid;gap:8px;}
+.fb-r-main{grid-template-columns:3fr 2fr;}
+.fb-r-half{grid-template-columns:1fr 1fr;}
+.fb-r-quad{grid-template-columns:repeat(4,1fr);}
+.fb-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;}
+.fb-vis{padding:18px 18px 8px;flex:1;display:flex;align-items:center;}
+.fb-body{padding:12px 18px 16px;border-top:1px solid var(--border);}
+.fb-name{font-size:13px;font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.fb-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+/* OCR mini */
+.ocr-demo{display:flex;align-items:center;gap:10px;width:100%;}
+.ocr-img{flex-shrink:0;width:68px;height:60px;background:var(--bg);border:1px solid var(--border);border-radius:6px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:10px 8px;}
+.ocr-iline{height:2.5px;background:var(--muted);opacity:.28;border-radius:2px;}
+.ocr-beam{position:absolute;left:0;right:0;height:1.5px;background:linear-gradient(90deg,transparent,var(--accent) 50%,transparent);animation:beam 2.4s ease-in-out infinite;}
+@keyframes beam{0%{top:10%;opacity:0;}15%{opacity:1;}85%{opacity:1;}100%{top:88%;opacity:0;}}
+.ocr-arrow{font-size:16px;color:var(--muted);flex-shrink:0;}
+.ocr-result{flex:1;display:flex;flex-direction:column;gap:5px;}
+.ocr-row{display:flex;align-items:center;gap:6px;}
+.ocr-t{font-size:11px;font-weight:600;color:var(--text);}
+.ocr-m{font-size:10px;color:var(--muted);}
+/* 품사 태그 mini */
+.pos-demo{display:flex;flex-direction:column;gap:8px;width:100%;}
+.pos-pills{display:flex;flex-wrap:wrap;gap:4px;}
+.pos-pill{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;}
+.pos-rows{display:flex;flex-direction:column;gap:4px;}
+.pos-row{display:flex;align-items:center;gap:6px;}
+.pos-chip{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;flex-shrink:0;}
+.pos-word{font-size:11px;color:var(--text);}
+/* 폴더 mini */
+.folder-demo{display:flex;flex-direction:column;gap:3px;width:100%;}
+.fi{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;font-size:11px;}
+.fi.fi-on{background:var(--accent-sub);}
+.fi-name{flex:1;color:var(--text);}
+.fi.fi-on .fi-name{font-weight:600;color:var(--accent);}
+.fi-cnt{color:var(--muted);font-variant-numeric:tabular-nums;font-size:10px;}
+/* 외운 단어 mini */
+.memo-demo{display:flex;flex-direction:column;gap:3px;width:100%;}
+.mrow{display:flex;align-items:center;gap:6px;padding:3px 0;}
+.mck{width:13px;height:13px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;}
+.mck.on{background:#34c759;}
+.mck.off{border:1.5px solid var(--border);}
+.mword{font-size:11px;flex:1;color:var(--text);}
+.mword.done{text-decoration:line-through;color:var(--muted);}
+.mbadge{font-size:9px;padding:1px 5px;border-radius:4px;flex-shrink:0;}
+.mbadge.done{background:rgba(52,199,89,.15);color:#34c759;}
+.mbadge.ing{background:var(--accent-sub);color:var(--accent);}
+.mbar-wrap{margin-top:6px;display:flex;align-items:center;gap:7px;}
+.mbar{flex:1;height:3px;background:var(--border);border-radius:99px;overflow:hidden;}
+.mbar-fill{height:100%;background:#34c759;border-radius:99px;}
+.mbar-txt{font-size:10px;color:var(--muted);}
+/* 하단 4 small cards */
+.fb-sm{padding:16px;}
+.fb-sm-ico{width:28px;height:28px;border-radius:7px;background:var(--accent-sub);display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+.fb-sm-ico svg{width:14px;height:14px;stroke:var(--accent);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+.fb-sm .fb-name{font-size:12px;}
+.fb-sm .fb-desc{font-size:11px;}
 
 /* ── INSTALL ─────────────────────────────── */
 .install{max-width:640px;margin:0 auto;padding:0 24px 64px;}
@@ -207,7 +260,8 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
 .footer-small a{color:var(--muted);text-decoration:underline;}
 
 @media(max-width:500px){
-  .feat-grid{grid-template-columns:1fr;}
+  .fb-r-main,.fb-r-half{grid-template-columns:1fr;}
+  .fb-r-quad{grid-template-columns:1fr 1fr;}
   .menubar-item,.bar-sys{display:none;}
   .s3-panel,.s4-panel{width:calc(100% - 20px);}
 }
@@ -429,15 +483,136 @@ button{cursor:pointer;font-family:inherit;border:none;background:none;}
 <!-- ── FEATURES ──────────────────────────── -->
 <section class="features" aria-labelledby="feat-label">
   <p class="section-label" id="feat-label" style="padding-top:64px">주요 기능</p>
-  <div class="feat-grid">
-    <div class="feat"><p class="feat-name">사진으로 단어 추가 <span class="feat-badge">Beta</span></p><p class="feat-desc">이미지 또는 PDF를 드래그하면 단어·뜻 쌍을 자동으로 인식합니다. 한국어·일본어·영어 지원.</p></div>
-    <div class="feat"><p class="feat-name">폴더 단어장</p><p class="feat-desc">단어를 폴더로 나눠 관리하고, 폴더 단위로 재생할 수 있습니다.</p></div>
-    <div class="feat"><p class="feat-name">커스텀 품사 태그</p><p class="feat-desc">동사·명사·형용사 등 품사를 색상 태그로 구분하고, 태그 필터로 원하는 품사만 골라볼 수 있어요.</p></div>
-    <div class="feat"><p class="feat-name">검색</p><p class="feat-desc">단어장에서 단어 또는 뜻으로 즉시 검색합니다. 품사 태그 필터와 함께 쓰면 더 편리해요.</p></div>
-    <div class="feat"><p class="feat-name">외운 단어 분리</p><p class="feat-desc">외운 단어는 체크해두면 재생 목록에서 빠집니다. 모르는 것만 계속 봅니다.</p></div>
-    <div class="feat"><p class="feat-name">재생 순서 · 방식 설정</p><p class="feat-desc">Shuffle·순서대로 중 선택하고, Reverse 모드로 뜻을 먼저 보거나 간격을 5·15·30초로 조정할 수 있어요.</p></div>
-    <div class="feat"><p class="feat-name">JSON 백업 · 복원</p><p class="feat-desc">단어장을 JSON으로 내보내고 다른 맥에서 불러올 수 있습니다.</p></div>
-    <div class="feat"><p class="feat-name">자동 업데이트</p><p class="feat-desc">앱 내 설정에서 새 버전을 확인하고 바로 설치할 수 있습니다. 재시작하면 적용돼요.</p></div>
+  <div class="feat-bento">
+
+    <!-- Row 1: OCR (크게) + 품사 태그 -->
+    <div class="fb-row fb-r-main">
+
+      <div class="fb-card">
+        <div class="fb-vis">
+          <div class="ocr-demo">
+            <div class="ocr-img">
+              <div class="ocr-iline" style="width:80%"></div>
+              <div class="ocr-iline" style="width:60%"></div>
+              <div class="ocr-iline" style="width:75%"></div>
+              <div class="ocr-iline" style="width:50%"></div>
+              <div class="ocr-beam"></div>
+            </div>
+            <div class="ocr-arrow">→</div>
+            <div class="ocr-result">
+              <div class="ocr-row"><span class="ocr-t">勉強する</span><span class="ocr-m">공부하다</span></div>
+              <div class="ocr-row"><span class="ocr-t">頑張る</span><span class="ocr-m">열심히 하다</span></div>
+              <div class="ocr-row"><span class="ocr-t">覚える</span><span class="ocr-m">외우다</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="fb-body">
+          <p class="fb-name">사진으로 단어 추가 <span class="feat-badge">Beta</span></p>
+          <p class="fb-desc">이미지나 PDF를 드래그하면 Vision 프레임워크가 단어·뜻을 자동 감지합니다. 한국어·일본어·영어 지원.</p>
+        </div>
+      </div>
+
+      <div class="fb-card">
+        <div class="fb-vis" style="align-items:flex-start;">
+          <div class="pos-demo">
+            <div class="pos-pills">
+              <span class="pos-pill" style="background:rgba(74,158,255,.15);color:#4a9eff">동사</span>
+              <span class="pos-pill" style="background:rgba(52,199,89,.15);color:#34c759">명사</span>
+              <span class="pos-pill" style="background:rgba(255,159,10,.15);color:#ff9f0a">형용사</span>
+              <span class="pos-pill" style="background:rgba(175,82,222,.15);color:#af52de">부사</span>
+            </div>
+            <div class="pos-rows">
+              <div class="pos-row"><span class="pos-chip" style="background:rgba(74,158,255,.15);color:#4a9eff">동사</span><span class="pos-word">勉強する</span></div>
+              <div class="pos-row"><span class="pos-chip" style="background:rgba(52,199,89,.15);color:#34c759">명사</span><span class="pos-word">努力</span></div>
+              <div class="pos-row"><span class="pos-chip" style="background:rgba(255,159,10,.15);color:#ff9f0a">형용사</span><span class="pos-word">眩しい</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="fb-body">
+          <p class="fb-name">커스텀 품사 태그</p>
+          <p class="fb-desc">색상 태그로 품사를 구분하고 태그 필터로 원하는 품사만 볼 수 있어요.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: 폴더 + 외운 단어 -->
+    <div class="fb-row fb-r-half">
+
+      <div class="fb-card">
+        <div class="fb-vis" style="align-items:flex-start;">
+          <div class="folder-demo">
+            <div class="fi fi-on">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" style="color:var(--accent)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4.5C1 3.95 1.45 3.5 2 3.5H4.5L5.5 4.5H10.5C11.05 4.5 11.5 4.95 11.5 5.5V9.5C11.5 10.05 11.05 10.5 10.5 10.5H2C1.45 10.5 1 10.05 1 9.5Z"/></svg>
+              <span class="fi-name">일본어 N3</span><span class="fi-cnt">24</span>
+            </div>
+            <div class="fi">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" style="color:var(--muted)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4.5C1 3.95 1.45 3.5 2 3.5H4.5L5.5 4.5H10.5C11.05 4.5 11.5 4.95 11.5 5.5V9.5C11.5 10.05 11.05 10.5 10.5 10.5H2C1.45 10.5 1 10.05 1 9.5Z"/></svg>
+              <span class="fi-name">TOEFL 어휘</span><span class="fi-cnt">58</span>
+            </div>
+            <div class="fi">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" style="color:var(--muted)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4.5C1 3.95 1.45 3.5 2 3.5H4.5L5.5 4.5H10.5C11.05 4.5 11.5 4.95 11.5 5.5V9.5C11.5 10.05 11.05 10.5 10.5 10.5H2C1.45 10.5 1 10.05 1 9.5Z"/></svg>
+              <span class="fi-name">비즈니스 영어</span><span class="fi-cnt">17</span>
+            </div>
+          </div>
+        </div>
+        <div class="fb-body">
+          <p class="fb-name">폴더 단어장</p>
+          <p class="fb-desc">단어를 폴더로 나눠 관리하고, 폴더 단위로 재생할 수 있습니다.</p>
+        </div>
+      </div>
+
+      <div class="fb-card">
+        <div class="fb-vis" style="align-items:flex-start;">
+          <div class="memo-demo">
+            <div class="mrow"><span class="mck on">✓</span><span class="mword done">覚える</span><span class="mbadge done">외웠음</span></div>
+            <div class="mrow"><span class="mck on">✓</span><span class="mword done">習慣</span><span class="mbadge done">외웠음</span></div>
+            <div class="mrow"><span class="mck off"></span><span class="mword">勉強する</span><span class="mbadge ing">학습중</span></div>
+            <div class="mrow"><span class="mck off"></span><span class="mword">頑張る</span><span class="mbadge ing">학습중</span></div>
+            <div class="mbar-wrap">
+              <div class="mbar"><div class="mbar-fill" style="width:40%"></div></div>
+              <span class="mbar-txt">2 / 5 외움</span>
+            </div>
+          </div>
+        </div>
+        <div class="fb-body">
+          <p class="fb-name">외운 단어 분리</p>
+          <p class="fb-desc">외운 단어에 체크하면 재생 목록에서 빠집니다. 모르는 것만 반복합니다.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: 유틸리티 4개 -->
+    <div class="fb-row fb-r-quad">
+      <div class="fb-card fb-sm">
+        <div class="fb-sm-ico">
+          <svg viewBox="0 0 14 14"><circle cx="5.5" cy="5.5" r="4"/><line x1="9" y1="9" x2="13" y2="13"/></svg>
+        </div>
+        <p class="fb-name">검색</p>
+        <p class="fb-desc">단어·뜻으로 즉시 검색합니다.</p>
+      </div>
+      <div class="fb-card fb-sm">
+        <div class="fb-sm-ico">
+          <svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.5"/><polyline points="7,3.5 7,7 9.5,9"/></svg>
+        </div>
+        <p class="fb-name">재생 설정</p>
+        <p class="fb-desc">Shuffle·순서, Reverse, 간격 조정.</p>
+      </div>
+      <div class="fb-card fb-sm">
+        <div class="fb-sm-ico">
+          <svg viewBox="0 0 14 14"><path d="M3 1.5h5.5L11 4v8a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V2a.5.5 0 01.5-.5z"/><path d="M8.5 1.5V4H11"/><line x1="4.5" y1="7" x2="9.5" y2="7"/><line x1="4.5" y1="9.5" x2="7.5" y2="9.5"/></svg>
+        </div>
+        <p class="fb-name">JSON 백업</p>
+        <p class="fb-desc">다른 Mac으로 내보내고 불러오기.</p>
+      </div>
+      <div class="fb-card fb-sm">
+        <div class="fb-sm-ico">
+          <svg viewBox="0 0 14 14"><path d="M7 10V3"/><path d="M4.5 5.5L7 3l2.5 2.5"/><line x1="2.5" y1="12" x2="11.5" y2="12"/></svg>
+        </div>
+        <p class="fb-name">자동 업데이트</p>
+        <p class="fb-desc">앱에서 바로 새 버전 확인·설치.</p>
+      </div>
+    </div>
+
   </div>
 </section>
 
