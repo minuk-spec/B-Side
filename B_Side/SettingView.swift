@@ -237,25 +237,32 @@ struct SettingView: View {
 
     func importData() {
         onSuspendMonitor?()
-        NSApp.activate(ignoringOtherApps: true)
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType.json]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.title = "백업 파일 선택"
-        panel.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue + 1)
-        panel.makeKeyAndOrderFront(nil)
-        let response = panel.runModal()
-        onResumeMonitor?()
-        guard response == .OK, let url = panel.url else { return }
-        guard let data = try? Data(contentsOf: url) else {
-            showFeedback("✗ 파일을 읽을 수 없습니다"); return
-        }
-        let result = store.importFromData(data)
-        if result.success {
-            showFeedback("✓ \(result.count)개 단어를 불러왔습니다")
+
+        if let window = NSApp.keyWindow {
+            panel.beginSheetModal(for: window) { response in
+                self.onResumeMonitor?()
+                guard response == .OK, let url = panel.url else { return }
+                guard let data = try? Data(contentsOf: url) else {
+                    self.showFeedback("✗ 파일을 읽을 수 없습니다"); return
+                }
+                let result = self.store.importFromData(data)
+                self.showFeedback(result.success ? "✓ \(result.count)개 단어를 불러왔습니다" : "✗ \(result.error)")
+            }
         } else {
-            showFeedback("✗ \(result.error)")
+            NSApp.activate(ignoringOtherApps: true)
+            let response = panel.runModal()
+            onResumeMonitor?()
+            guard response == .OK, let url = panel.url else { return }
+            guard let data = try? Data(contentsOf: url) else {
+                showFeedback("✗ 파일을 읽을 수 없습니다"); return
+            }
+            let result = store.importFromData(data)
+            showFeedback(result.success ? "✓ \(result.count)개 단어를 불러왔습니다" : "✗ \(result.error)")
         }
     }
 
